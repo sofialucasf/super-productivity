@@ -19,8 +19,7 @@ type DueChanges = {
   plannedAt?: number;
 };
 
-const SHORT_SYNTAX_TIME_REG_EX = / t?(([0-9]+(m|h|d)+)? *\/ *)?([0-9]+(m|h|d)+)/;
-// NOTE: should come after the time reg ex is executed so we don't have to deal with those strings too
+const SHORT_SYNTAX_TIME_REG_EX = /(?:\s|^)t?((\d+(?:\.\d+)?[mhd])(?:\s*\/\s*(\d+(?:\.\d+)?[mhd]))?(?=\s|$))/i;
 
 const CH_PRO = '+';
 const CH_TAG = '#';
@@ -308,30 +307,27 @@ const parseScheduledDate = (task: Partial<TaskCopy>, now: Date): DueChanges => {
 };
 
 const parseTimeSpentChanges = (task: Partial<TaskCopy>): Partial<Task> => {
-  if (!task.title) {
-    return {};
-  }
+  if (!task.title) return {};
 
   const matches = SHORT_SYNTAX_TIME_REG_EX.exec(task.title);
+  if (!matches) return {};
 
-  if (matches && matches.length >= 3) {
-    const full = matches[0];
-    const timeSpent = matches[2];
-    const timeEstimate = matches[4];
+  const full = matches[0];
+  const timeSpent = matches[2]; // First part (before slash)
+  const timeEstimate = matches[3]; // Second part (after slash)
 
-    return {
-      ...(timeSpent
-        ? {
-            timeSpentOnDay: {
-              ...(task.timeSpentOnDay || {}),
-              [getWorklogStr()]: stringToMs(timeSpent),
-            },
-          }
-        : {}),
-      timeEstimate: stringToMs(timeEstimate),
-      title: task.title.replace(full, ''),
-    };
-  }
+  // If no slash, use the single value as timeEstimate only
+  const hasSlashFormat = matches[3] !== undefined;
 
-  return {};
+  return {
+    ...(hasSlashFormat && timeSpent ? {
+      timeSpentOnDay: {
+        ...(task.timeSpentOnDay || {}),
+        [getWorklogStr()]: stringToMs(timeSpent),
+      },
+    } : {}),
+    ...(timeEstimate ? { timeEstimate: stringToMs(timeEstimate) } : 
+       timeSpent ? { timeEstimate: stringToMs(timeSpent) } : {}),
+    title: task.title.replace(full, '').trim(),
+  };
 };
