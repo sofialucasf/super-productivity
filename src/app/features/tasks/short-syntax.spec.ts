@@ -1,14 +1,19 @@
-import { ShowSubTasksMode, TaskCopy } from './task.model';
+import { TaskCopy } from './task.model';
 import { shortSyntax } from './short-syntax';
 import { getWorklogStr } from '../../util/get-work-log-str';
+import {
+  MONTH_SHORT_NAMES,
+  oneDayInMilliseconds,
+} from '../../util/month-time-conversion';
 import { Tag } from '../tag/tag.model';
 import { DEFAULT_TAG } from '../tag/tag.const';
 import { Project } from '../project/project.model';
 import { DEFAULT_GLOBAL_CONFIG } from '../config/default-global-config.const';
+import { INBOX_PROJECT } from '../project/project.const';
 
 const TASK: TaskCopy = {
   id: 'id',
-  projectId: undefined,
+  projectId: INBOX_PROJECT.id,
   subTaskIds: [],
   timeSpentOnDay: {},
   timeSpent: 0,
@@ -22,9 +27,7 @@ const TASK: TaskCopy = {
   reminderId: undefined,
   created: Date.now(),
   repeatCfgId: undefined,
-  plannedAt: undefined,
-
-  _showSubTasksMode: ShowSubTasksMode.Show,
+  dueWithTime: undefined,
 
   attachments: [],
 
@@ -52,7 +55,7 @@ const getPlannedDateTimestampFromShortSyntaxReturnValue = (
   now: Date = new Date(),
 ): number => {
   const r = shortSyntax(taskInput, CONFIG, undefined, undefined, now);
-  const parsedDateInMilliseconds = r?.taskChanges?.plannedAt as number;
+  const parsedDateInMilliseconds = r?.taskChanges?.dueWithTime as number;
   return parsedDateInMilliseconds;
 };
 
@@ -109,6 +112,28 @@ const checkIfCorrectDateAndTime = (
   const isHourCorrect = date.getHours() === hour;
   const isMinuteCorrect = date.getMinutes() === minute;
   return isDayCorrect && isHourCorrect && isMinuteCorrect;
+};
+
+const checkIfCorrectDateMonthAndYear = (
+  timestamp: number,
+  givenDate: number,
+  givenMonth: number,
+  givenYear: number,
+  hour?: number,
+  minute?: number,
+): boolean => {
+  const date = new Date(timestamp);
+  const correctDateMonthYear =
+    date.getDate() === givenDate &&
+    date.getMonth() + 1 === givenMonth &&
+    date.getFullYear() === givenYear;
+  if (!hour) {
+    return correctDateMonthYear;
+  }
+  if (!minute) {
+    return correctDateMonthYear && date.getHours() === hour;
+  }
+  return correctDateMonthYear && date.getHours() === hour && date.getMinutes() === minute;
 };
 
 describe('shortSyntax', () => {
@@ -991,6 +1016,63 @@ describe('shortSyntax', () => {
         isEnableTag: false,
       });
       expect(r).toEqual(undefined);
+    });
+  });
+
+  // This group of tests address Chrono's parsing the format "<date> <month> <yy}>" as year
+  // This will cause unintended parsing result when the date syntax is used together with the time estimate syntax
+  // https://github.com/johannesjo/super-productivity/issues/4194
+  // The focus of this test group will be the ability of the parser to get the correct year and time estimate
+  describe('should not parse time estimate syntax as year', () => {
+    const today = new Date();
+    const minuteEstimate = 90;
+
+    it('should correctly parse year and time estimate when the input date only has month and day of the month', () => {
+      const tomorrow = new Date(today.getTime() + oneDayInMilliseconds);
+      const inputMonth = tomorrow.getMonth() + 1;
+      const inputMonthName = MONTH_SHORT_NAMES[tomorrow.getMonth()];
+      const inputDayOfTheMonth = tomorrow.getDate();
+      const t = {
+        ...TASK,
+        title: `Test @${inputMonthName} ${inputDayOfTheMonth} ${minuteEstimate}m`,
+      };
+      const parsedTaskInfo = shortSyntax(t, CONFIG, []);
+      const taskChanges = parsedTaskInfo?.taskChanges;
+      const dueWithTime = taskChanges?.dueWithTime as number;
+      expect(
+        checkIfCorrectDateMonthAndYear(
+          dueWithTime,
+          inputDayOfTheMonth,
+          inputMonth,
+          tomorrow.getFullYear(),
+        ),
+      ).toBeTrue();
+      expect(taskChanges?.timeEstimate).toEqual(minuteEstimate * 60 * 1000);
+    });
+
+    it('should correctly parse year and time estimate when the input date contains month, day of the month and time', () => {
+      const time = '4pm';
+      const tomorrow = new Date(today.getTime() + oneDayInMilliseconds);
+      const inputMonth = tomorrow.getMonth() + 1;
+      const inputMonthName = MONTH_SHORT_NAMES[tomorrow.getMonth()];
+      const inputDayOfTheMonth = tomorrow.getDate();
+      const t = {
+        ...TASK,
+        title: `Test @${inputMonthName} ${inputDayOfTheMonth} ${time} ${minuteEstimate}m`,
+      };
+      const parsedTaskInfo = shortSyntax(t, CONFIG, []);
+      const taskChanges = parsedTaskInfo?.taskChanges;
+      const dueWithTime = taskChanges?.dueWithTime as number;
+      expect(
+        checkIfCorrectDateMonthAndYear(
+          dueWithTime,
+          inputDayOfTheMonth,
+          inputMonth,
+          tomorrow.getFullYear(),
+          16,
+        ),
+      ).toBeTrue();
+      expect(taskChanges?.timeEstimate).toEqual(minuteEstimate * 60 * 1000);
     });
   });
 });

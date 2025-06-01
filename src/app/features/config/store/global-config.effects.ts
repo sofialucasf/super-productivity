@@ -1,9 +1,7 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { filter, tap, withLatestFrom } from 'rxjs/operators';
+import { filter, pairwise, tap } from 'rxjs/operators';
 import { Store } from '@ngrx/store';
-import { CONFIG_FEATURE_NAME } from './global-config.reducer';
-import { PersistenceService } from '../../../core/persistence/persistence.service';
 import { IS_ELECTRON, LanguageCode } from '../../../app.constants';
 import { T } from '../../../t.const';
 import { LanguageService } from '../../../core/language/language.service';
@@ -14,30 +12,15 @@ import { DEFAULT_GLOBAL_CONFIG } from '../default-global-config.const';
 import { KeyboardConfig } from '../keyboard-config.model';
 import { updateGlobalConfigSection } from './global-config.actions';
 import { MiscConfig } from '../global-config.model';
-import { hideSideNav, toggleSideNav } from '../../../core-ui/layout/store/layout.actions';
+import { selectMiscConfig } from './global-config.reducer';
 
 @Injectable()
 export class GlobalConfigEffects {
   private _actions$ = inject(Actions);
-  private _persistenceService = inject(PersistenceService);
   private _languageService = inject(LanguageService);
   private _dateService = inject(DateService);
   private _snackService = inject(SnackService);
   private _store = inject<Store<any>>(Store);
-
-  updateConfig$: any = createEffect(
-    () =>
-      this._actions$.pipe(
-        ofType(updateGlobalConfigSection),
-        withLatestFrom(this._store),
-        tap(([action, store]) =>
-          this._saveToLs([action, store], {
-            isSkipSyncModelChangeUpdate: !!action.isSkipLastActiveUpdate,
-          }),
-        ),
-      ),
-    { dispatch: false },
-  );
 
   snackUpdate$: any = createEffect(
     () =>
@@ -150,30 +133,16 @@ export class GlobalConfigEffects {
 
   toggleNavOnMinimalNavChange$: any = createEffect(
     () =>
-      this._actions$.pipe(
-        ofType(updateGlobalConfigSection),
-        filter(({ sectionKey, sectionCfg }) => sectionKey === 'misc'),
-        // eslint-disable-next-line
-        filter(
-          ({ sectionKey, sectionCfg }) =>
-            sectionCfg && 'isUseMinimalNav' in (sectionCfg as MiscConfig),
-        ),
-        tap(({ sectionKey, sectionCfg }) => {
-          this._store.dispatch(hideSideNav());
-          this._store.dispatch(toggleSideNav());
+      this._store.select(selectMiscConfig).pipe(
+        pairwise(),
+        filter(([a, b]) => a.isUseMinimalNav !== b.isUseMinimalNav),
+        tap(() => {
+          console.log('AA');
+          // this._store.dispatch(hideSideNav());
+          // this._store.dispatch(toggleSideNav());
           window.dispatchEvent(new Event('resize'));
         }),
       ),
     { dispatch: false },
   );
-
-  private _saveToLs(
-    [action, completeState]: [any, any],
-    { isSkipSyncModelChangeUpdate } = { isSkipSyncModelChangeUpdate: false },
-  ): void {
-    const globalConfig = completeState[CONFIG_FEATURE_NAME];
-    this._persistenceService.globalConfig.saveState(globalConfig, {
-      isSyncModelChange: !isSkipSyncModelChangeUpdate,
-    });
-  }
 }

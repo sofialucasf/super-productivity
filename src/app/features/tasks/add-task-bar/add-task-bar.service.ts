@@ -18,7 +18,6 @@ import { TagService } from '../../tag/tag.service';
 import { ProjectService } from '../../project/project.service';
 import { GlobalConfigService } from '../../config/global-config.service';
 import { ShortSyntaxTag, shortSyntaxToTags } from './short-syntax-to-tags';
-import { Tag } from '../../tag/tag.model';
 import { Project } from '../../project/project.model';
 import { MentionConfig, Mentions } from 'angular-mentions/lib/mention-config';
 import { UntypedFormControl } from '@angular/forms';
@@ -30,6 +29,7 @@ import { SnackService } from '../../../core/snack/snack.service';
 import { T } from '../../../t.const';
 import { IssueService } from '../../issue/issue.service';
 import { assertTruthy } from '../../../util/assert-truthy';
+import { DEFAULT_PROJECT_COLOR } from '../../work-context/work-context.const';
 
 @Injectable({
   providedIn: 'root',
@@ -118,7 +118,7 @@ export class AddTaskBarService {
     return taskSuggestionsCtrl.valueChanges.pipe(
       filter((val) => typeof val === 'string'),
       withLatestFrom(
-        this._tagService.tags$,
+        this._tagService.tagsNoMyDayAndNoList$,
         this._projectService.list$,
         this._workContextService.activeWorkContext$,
         this._globalConfigService.shortSyntax$,
@@ -128,7 +128,7 @@ export class AddTaskBarService {
           val,
           tags,
           projects,
-          defaultColor: activeWorkContext.theme.primary,
+          defaultColor: activeWorkContext.theme.primary || DEFAULT_PROJECT_COLOR,
           shortSyntaxConfig,
         }),
       ),
@@ -170,10 +170,7 @@ export class AddTaskBarService {
         this._workContextService.activeWorkContextType === WorkContextType.TAG
       ) {
         const task = await this._taskService.getByIdOnce$(item.taskId).toPromise();
-        this._taskService.updateTags(task, [
-          ...task.tagIds,
-          this._workContextService.activeWorkContextId as string,
-        ]);
+        this._taskService.moveToCurrentWorkContext(task);
       }
       this._snackService.open({
         ico: 'playlist_add',
@@ -275,7 +272,7 @@ export class AddTaskBarService {
               taskId: task.id,
               taskIssueId: task.issueId || undefined,
               issueType: task.issueType || undefined,
-              projectId: task.projectId || undefined,
+              projectId: task.projectId,
               isFromOtherContextAndTagOnlySearch: true,
               tagIds: task.tagIds,
             })),
@@ -284,15 +281,13 @@ export class AddTaskBarService {
           !!tasks.length
             ? forkJoin(
                 tasks.map((task) => {
-                  const isFromProject = !!task.projectId;
                   return from(this._getCtxForTaskSuggestion(task)).pipe(
                     first(),
                     map((ctx) => ({
                       ...task,
                       ctx: {
                         ...ctx,
-                        icon:
-                          (ctx && (ctx as Tag).icon) || (isFromProject && 'list') || null,
+                        icon: (ctx && ctx.icon) || null,
                       },
                     })),
                   );
@@ -317,16 +312,7 @@ export class AddTaskBarService {
 
   private async _getCtxForTaskSuggestion({
     projectId,
-    tagIds,
-  }: AddTaskSuggestion): Promise<Tag | Project> {
-    if (projectId) {
-      return await this._projectService.getByIdOnce$(projectId).toPromise();
-    } else {
-      const firstTagId = (tagIds as string[])[0];
-      if (!firstTagId) {
-        throw new Error('No first tag');
-      }
-      return await this._tagService.getTagById$(firstTagId).pipe(first()).toPromise();
-    }
+  }: AddTaskSuggestion): Promise<Project> {
+    return await this._projectService.getByIdOnce$(projectId).toPromise();
   }
 }

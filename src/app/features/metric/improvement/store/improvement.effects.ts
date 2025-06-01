@@ -1,25 +1,13 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { filter, first, map, switchMap, tap, withLatestFrom } from 'rxjs/operators';
+import { filter, map, withLatestFrom } from 'rxjs/operators';
 import { Store } from '@ngrx/store';
+import { clearHiddenImprovements, deleteImprovements } from './improvement.actions';
 import {
-  addImprovement,
-  addImprovementCheckedDay,
-  clearHiddenImprovements,
-  deleteImprovement,
-  deleteImprovements,
-  disableImprovementRepeat,
-  hideImprovement,
-  toggleImprovementRepeat,
-  updateImprovement,
-} from './improvement.actions';
-import {
-  selectImprovementFeatureState,
+  selectHiddenImprovements,
   selectImprovementHideDay,
 } from './improvement.reducer';
-import { PersistenceService } from '../../../../core/persistence/persistence.service';
 import { selectUnusedImprovementIds } from '../../store/metric.selectors';
-import { ImprovementState } from '../improvement.model';
 import { DateService } from 'src/app/core/date/date.service';
 import { loadAllData } from '../../../../root-store/meta/load-all-data.action';
 
@@ -27,33 +15,20 @@ import { loadAllData } from '../../../../root-store/meta/load-all-data.action';
 export class ImprovementEffects {
   private _actions$ = inject(Actions);
   private _store$ = inject<Store<any>>(Store);
-  private _persistenceService = inject(PersistenceService);
   private _dateService = inject(DateService);
-
-  updateImprovements$: any = createEffect(
-    () =>
-      this._actions$.pipe(
-        ofType(
-          addImprovement,
-          updateImprovement,
-          toggleImprovementRepeat,
-          disableImprovementRepeat,
-          hideImprovement,
-          deleteImprovement,
-          addImprovementCheckedDay,
-        ),
-        switchMap(() => this._store$.select(selectImprovementFeatureState).pipe(first())),
-        tap((state) => this._saveToLs(state)),
-      ),
-    { dispatch: false },
-  );
 
   // TODO check
   clearImprovements$: any = createEffect(() =>
     this._actions$.pipe(
       ofType(loadAllData.type),
-      withLatestFrom(this._store$.select(selectImprovementHideDay)),
-      filter(([, hideDay]) => hideDay !== this._dateService.todayStr()),
+      withLatestFrom(
+        this._store$.select(selectImprovementHideDay),
+        this._store$.select(selectHiddenImprovements),
+      ),
+      filter(
+        ([, hideDay, hiddenImprovements]) =>
+          hiddenImprovements.length > 0 && hideDay !== this._dateService.todayStr(),
+      ),
       map(() => clearHiddenImprovements()),
     ),
   );
@@ -63,13 +38,8 @@ export class ImprovementEffects {
     this._actions$.pipe(
       ofType(loadAllData.type),
       withLatestFrom(this._store$.select(selectUnusedImprovementIds)),
+      filter(([, unusedIds]) => unusedIds.length > 0),
       map(([a, unusedIds]) => deleteImprovements({ ids: unusedIds })),
     ),
   );
-
-  private _saveToLs(improvementState: ImprovementState): void {
-    this._persistenceService.improvement.saveState(improvementState, {
-      isSyncModelChange: true,
-    });
-  }
 }

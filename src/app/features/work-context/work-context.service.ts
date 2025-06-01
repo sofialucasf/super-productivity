@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { select, Store } from '@ngrx/store';
 import { combineLatest, interval, Observable, of, timer } from 'rxjs';
 import {
@@ -32,22 +32,13 @@ import { hasTasksToWorkOn, mapEstimateRemainingFromTasks } from './work-context.
 import {
   flattenTasks,
   selectAllTasks,
+  selectAllTasksWithSubTasks,
   selectTasksWithSubTasksByIds,
 } from '../tasks/store/task.selectors';
 import { Actions, ofType } from '@ngrx/effects';
 import { WorklogExportSettings } from '../worklog/worklog.model';
-import {
-  addToProjectBreakTime,
-  updateProjectAdvancedCfg,
-  updateProjectWorkEnd,
-  updateProjectWorkStart,
-} from '../project/store/project.actions';
-import {
-  addToBreakTimeForTag,
-  updateAdvancedConfigForTag,
-  updateWorkEndForTag,
-  updateWorkStartForTag,
-} from '../tag/store/tag.actions';
+import { updateProjectAdvancedCfg } from '../project/store/project.actions';
+import { updateAdvancedConfigForTag } from '../tag/store/tag.actions';
 import { allDataWasLoaded } from '../../root-store/meta/all-data-was-loaded.actions';
 import {
   selectActiveContextId,
@@ -68,7 +59,12 @@ import { isShallowEqual } from '../../util/is-shallow-equal';
 import { distinctUntilChangedObject } from '../../util/distinct-until-changed-object';
 import { DateService } from 'src/app/core/date/date.service';
 import { getTimeSpentForDay } from './get-time-spent-for-day.util';
-import { PersistenceService } from '../../core/persistence/persistence.service';
+import { TimeTrackingService } from '../time-tracking/time-tracking.service';
+import { TimeTrackingActions } from '../time-tracking/store/time-tracking.actions';
+import { TaskArchiveService } from '../time-tracking/task-archive.service';
+import { INBOX_PROJECT } from '../project/project.const';
+import { selectProjectById } from '../project/store/project.selectors';
+import { getWorklogStr } from '../../util/get-work-log-str';
 
 @Injectable({
   providedIn: 'root',
@@ -81,7 +77,8 @@ export class WorkContextService {
   private _dateService = inject(DateService);
   private _router = inject(Router);
   private _translateService = inject(TranslateService);
-  private _persistenceService = inject(PersistenceService);
+  private _timeTrackingService = inject(TimeTrackingService);
+  private _taskArchiveService = inject(TaskArchiveService);
 
   // here because to avoid circular dependencies
   // should be treated as private
@@ -143,9 +140,25 @@ export class WorkContextService {
     switchMap(() => this._store$.select(selectActiveWorkContext)),
     shareReplay(1),
   );
+  activeWorkContextTTData$ = this.activeWorkContext$.pipe(
+    switchMap((ac) => this._timeTrackingService.getWorkStartEndForWorkContext$(ac)),
+    shareReplay(1),
+  );
 
   activeWorkContextTitle$: Observable<string> = this.activeWorkContext$.pipe(
-    map((activeContext) => activeContext.title),
+    switchMap((activeContext) => {
+      if (activeContext.id === TODAY_TAG.id && activeContext.title === TODAY_TAG.title) {
+        return this._translateService.stream(T.G.TODAY_TAG_TITLE);
+      }
+      if (
+        activeContext.id === INBOX_PROJECT.id &&
+        activeContext.title === INBOX_PROJECT.title
+      ) {
+        return this._translateService.stream(T.G.INBOX_PROJECT_TITLE);
+      }
+
+      return of(activeContext.title);
+    }),
   );
 
   mainWorkContext$: Observable<WorkContext> = this._isAllDataLoaded$.pipe(
@@ -170,6 +183,32 @@ export class WorkContextService {
             })),
           )
         : of(mainWorkContext),
+    ),
+  );
+
+  inboxWorkContext$: Observable<WorkContext> = this._isAllDataLoaded$.pipe(
+    concatMap(() => this._store$.select(selectProjectById, { id: INBOX_PROJECT.id })),
+    map(
+      (inboxWorkContext) =>
+        ({
+          ...inboxWorkContext,
+          type: WorkContextType.TAG,
+          routerLink: `tag/${inboxWorkContext.id}`,
+          // TODO get pinned noteIds
+          noteIds: [],
+        }) as WorkContext,
+    ),
+    switchMap((inboxWorkContext) =>
+      inboxWorkContext.id === INBOX_PROJECT.id &&
+      inboxWorkContext.title === INBOX_PROJECT.title
+        ? this._translateService.stream(T.G.INBOX_PROJECT_TITLE).pipe(
+            distinctUntilChanged(),
+            map((translation) => ({
+              ...inboxWorkContext,
+              title: translation,
+            })),
+          )
+        : of(inboxWorkContext),
     ),
   );
 
@@ -243,13 +282,6 @@ export class WorkContextService {
     ),
   );
 
-  undoneTasks$: Observable<TaskWithSubTasks[]> = this.todaysTasks$.pipe(
-    map((tasks) => tasks.filter((task) => task && !task.isDone)),
-  );
-
-  doneTasks$: Observable<TaskWithSubTasks[]> = this.todaysTasks$.pipe(
-    map((tasks) => tasks.filter((task) => task && task.isDone)),
-  );
   doneTaskIds$: Observable<string[]> = this._store$.select(
     selectDoneTaskIdsForActiveContext,
   );
@@ -284,8 +316,13 @@ export class WorkContextService {
   workingTodayArchived$: Observable<number> =
     this._globalTrackingIntervalService.todayDateStr$.pipe(
       switchMap((worklogStrDate) =>
-        this.getTimeWorkedForDayForArchivedTasks(worklogStrDate),
+        this.getTimeWorkedForDayForTasksInArchiveYoung(worklogStrDate),
       ),
+    );
+
+  doneTodayArchived$: Observable<number> =
+    this._globalTrackingIntervalService.todayDateStr$.pipe(
+      switchMap((worklogStrDate) => this.getDoneTodayInArchive(worklogStrDate)),
     );
 
   isHasTasksToWorkOn$: Observable<boolean> = this.todaysTasks$.pipe(
@@ -325,6 +362,17 @@ export class WorkContextService {
   isToday$: Observable<boolean> = this.activeWorkContextId$.pipe(
     map((id) => id === TODAY_TAG.id),
     shareReplay(1),
+  );
+
+  undoneTasks$: Observable<TaskWithSubTasks[]> = this.todaysTasks$.pipe(
+    map((tasks) => tasks.filter((task) => task && !task.isDone)),
+  );
+
+  doneTasks$: Observable<TaskWithSubTasks[]> = this.isToday$.pipe(
+    switchMap((isToday) =>
+      isToday ? this._store$.select(selectAllTasksWithSubTasks) : this.todaysTasks$,
+    ),
+    map((tasks) => tasks.filter((task) => task && task.isDone)),
   );
 
   constructor() {
@@ -382,14 +430,46 @@ export class WorkContextService {
     );
   }
 
-  async getTimeWorkedForDayForArchivedTasks(
+  async getDoneTodayInArchive(
     day: string = this._dateService.todayStr(),
   ): Promise<number> {
     const isToday = await this.isToday$.pipe(first()).toPromise();
     const { activeId, activeType } = await this.activeWorkContextTypeAndId$
       .pipe(first())
       .toPromise();
-    const taskArchiveState = await this._persistenceService.taskArchive.loadState();
+    // young should be enough for this
+    const taskArchiveState = await this._taskArchiveService.loadYoung();
+
+    const { ids, entities } = taskArchiveState;
+    const tasksDoneToday: ArchiveTask[] = ids
+      .map((id) => entities[id])
+      .filter(
+        (t) => !!t && !t.parentId && t.doneOn && getWorklogStr(t.doneOn) === day,
+      ) as ArchiveTask[];
+
+    let tasksToConsider: ArchiveTask[] = [];
+    if (isToday) {
+      tasksToConsider = tasksDoneToday;
+    } else {
+      if (activeType === WorkContextType.PROJECT) {
+        tasksToConsider = tasksDoneToday.filter((t) => t.projectId === activeId);
+      } else {
+        tasksToConsider = tasksDoneToday.filter((t) => t.tagIds.includes(activeId));
+      }
+    }
+
+    return tasksToConsider.length;
+  }
+
+  async getTimeWorkedForDayForTasksInArchiveYoung(
+    day: string = this._dateService.todayStr(),
+  ): Promise<number> {
+    const isToday = await this.isToday$.pipe(first()).toPromise();
+    const { activeId, activeType } = await this.activeWorkContextTypeAndId$
+      .pipe(first())
+      .toPromise();
+    // young should be enough for this
+    const taskArchiveState = await this._taskArchiveService.loadYoung();
 
     const { ids, entities } = taskArchiveState;
     const tasksWorkedOnToday: ArchiveTask[] = ids
@@ -434,26 +514,35 @@ export class WorkContextService {
     );
   }
 
-  getWorkStart$(day: string = this._dateService.todayStr()): Observable<number> {
-    return this.activeWorkContext$.pipe(map((ctx) => ctx.workStart[day]));
+  // TODO merge this stuff
+  getWorkStart$(
+    day: string = this._dateService.todayStr(),
+  ): Observable<number | undefined> {
+    return this.activeWorkContextTTData$.pipe(map((byDateMap) => byDateMap[day]?.s));
   }
 
-  getWorkEnd$(day: string = this._dateService.todayStr()): Observable<number> {
-    return this.activeWorkContext$.pipe(map((ctx) => ctx.workEnd[day]));
+  getWorkEnd$(
+    day: string = this._dateService.todayStr(),
+  ): Observable<number | undefined> {
+    return this.activeWorkContextTTData$.pipe(map((byDateMap) => byDateMap[day]?.e));
   }
 
-  getBreakTime$(day: string = this._dateService.todayStr()): Observable<number> {
-    return this.activeWorkContext$.pipe(map((ctx) => ctx.breakTime[day]));
+  getBreakTime$(
+    day: string = this._dateService.todayStr(),
+  ): Observable<number | undefined> {
+    return this.activeWorkContextTTData$.pipe(map((byDateMap) => byDateMap[day]?.bt));
   }
 
-  getBreakNr$(day: string = this._dateService.todayStr()): Observable<number> {
-    return this.activeWorkContext$.pipe(map((ctx) => ctx.breakNr[day]));
+  getBreakNr$(
+    day: string = this._dateService.todayStr(),
+  ): Observable<number | undefined> {
+    return this.activeWorkContextTTData$.pipe(map((byDateMap) => byDateMap[day]?.b));
   }
 
   async load(): Promise<void> {
     // NOTE: currently route has prevalence over everything else and as there is not state apart from
     // activeContextId, and activeContextType, we don't need to load it
-    // const state = await this._persistenceService.context.loadState() || initialContextState;
+    // const state = await this._pfapiService.context.loadState() || initialContextState;
     // this._store$.dispatch(loadWorkContextState({state}));
   }
 
@@ -464,45 +553,48 @@ export class WorkContextService {
   }
 
   updateWorkStartForActiveContext(date: string, newVal: number): void {
-    const payload: { id: string; date: string; newVal: number } = {
-      id: this.activeWorkContextId as string,
-      date,
-      newVal,
-    };
-    const action =
-      this.activeWorkContextType === WorkContextType.PROJECT
-        ? updateProjectWorkStart(payload)
-        : updateWorkStartForTag(payload);
-    this._store$.dispatch(action);
+    if (!this.activeWorkContextId || !this.activeWorkContextType) {
+      throw new Error('Invalid active work context');
+    }
+    this._store$.dispatch(
+      TimeTrackingActions.updateWorkContextData({
+        ctx: { id: this.activeWorkContextId, type: this.activeWorkContextType },
+        date,
+        updates: { s: newVal },
+      }),
+    );
   }
 
   updateWorkEndForActiveContext(date: string, newVal: number): void {
-    const payload: { id: string; date: string; newVal: number } = {
-      id: this.activeWorkContextId as string,
-      date,
-      newVal,
-    };
-    const action =
-      this.activeWorkContextType === WorkContextType.PROJECT
-        ? updateProjectWorkEnd(payload)
-        : updateWorkEndForTag(payload);
-    this._store$.dispatch(action);
+    if (!this.activeWorkContextId || !this.activeWorkContextType) {
+      throw new Error('Invalid active work context');
+    }
+    this._store$.dispatch(
+      TimeTrackingActions.updateWorkContextData({
+        ctx: { id: this.activeWorkContextId, type: this.activeWorkContextType },
+        date,
+        updates: { e: newVal },
+      }),
+    );
   }
 
-  addToBreakTimeForActiveContext(
+  async addToBreakTimeForActiveContext(
     date: string = this._dateService.todayStr(),
     valToAdd: number,
-  ): void {
-    const payload: { id: string; date: string; valToAdd: number } = {
-      id: this.activeWorkContextId as string,
-      date,
-      valToAdd,
-    };
-    const action =
-      this.activeWorkContextType === WorkContextType.PROJECT
-        ? addToProjectBreakTime(payload)
-        : addToBreakTimeForTag(payload);
-    this._store$.dispatch(action);
+  ): Promise<void> {
+    if (!this.activeWorkContextId || !this.activeWorkContextType) {
+      throw new Error('Invalid active work context');
+    }
+    const currentBreakTime = (await this.getBreakTime$().pipe(first()).toPromise()) || 0;
+    const currentBreakNr = (await this.getBreakNr$().pipe(first()).toPromise()) || 0;
+
+    this._store$.dispatch(
+      TimeTrackingActions.updateWorkContextData({
+        ctx: { id: this.activeWorkContextId, type: this.activeWorkContextType },
+        date,
+        updates: { b: currentBreakNr + 1, bt: currentBreakTime + valToAdd },
+      }),
+    );
   }
 
   private _updateAdvancedCfgForCurrentContext(

@@ -1,30 +1,30 @@
 import { nanoid } from 'nanoid';
-import { Injectable, inject } from '@angular/core';
-import { PersistenceService } from '../../core/persistence/persistence.service';
+import { inject, Injectable } from '@angular/core';
 import { RecurringConfig, Reminder, ReminderCopy, ReminderType } from './reminder.model';
 import { SnackService } from '../../core/snack/snack.service';
 import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import { dirtyDeepCopy } from '../../util/dirtyDeepCopy';
-import { ImexMetaService } from '../../imex/imex-meta/imex-meta.service';
+import { ImexViewService } from '../../imex/imex-meta/imex-view.service';
 import { TaskService } from '../tasks/task.service';
 import { Task } from '../tasks/task.model';
 import { NoteService } from '../note/note.service';
 import { T } from '../../t.const';
-import { filter, map, skipUntil } from 'rxjs/operators';
+import { filter, first, map, skipUntil } from 'rxjs/operators';
 import { migrateReminders } from './migrate-reminder.util';
 import { devError } from '../../util/dev-error';
 import { Note } from '../note/note.model';
 import { environment } from 'src/environments/environment';
+import { PfapiService } from '../../pfapi/pfapi.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ReminderService {
-  private readonly _persistenceService = inject(PersistenceService);
+  private readonly _pfapiService = inject(PfapiService);
   private readonly _snackService = inject(SnackService);
   private readonly _taskService = inject(TaskService);
   private readonly _noteService = inject(NoteService);
-  private readonly _imexMetaService = inject(ImexMetaService);
+  private readonly _imexMetaService = inject(ImexViewService);
 
   private _onRemindersActive$: Subject<Reminder[]> = new Subject<Reminder[]>();
   onRemindersActive$: Observable<Reminder[]> = this._onRemindersActive$.pipe(
@@ -44,7 +44,6 @@ export class ReminderService {
   private _isRemindersLoaded$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
     false,
   );
-  isRemindersLoaded$: Observable<boolean> = this._isRemindersLoaded$.asObservable();
 
   private _w: Worker;
   private _reminders: Reminder[] = [];
@@ -120,6 +119,7 @@ export class ReminderService {
     title: string,
     remindAt: number,
     recurringConfig?: RecurringConfig,
+    isWaitForReady: boolean = false,
   ): string {
     // make sure that there is always only a single reminder with a particular relatedId as there might be race conditions
     this.removeReminderByRelatedIdIfSet(relatedId);
@@ -147,7 +147,7 @@ export class ReminderService {
         type,
         recurringConfig,
       });
-      this._saveModel(this._reminders);
+      this._saveModel(this._reminders, isWaitForReady);
       return id;
     }
   }
@@ -224,16 +224,26 @@ export class ReminderService {
   }
 
   private async _loadFromDatabase(): Promise<Reminder[]> {
-    return migrateReminders((await this._persistenceService.reminders.loadState()) || []);
+    return migrateReminders((await this._pfapiService.m.reminders.load()) || []);
   }
 
-  private async _saveModel(reminders: Reminder[]): Promise<void> {
-    if (!this._isRemindersLoaded$.getValue()) {
+  private async _saveModel(
+    reminders: Reminder[],
+    isWaitForReady: boolean = false,
+  ): Promise<void> {
+    if (isWaitForReady) {
+      await this._isRemindersLoaded$
+        .pipe(
+          filter((v) => !!v),
+          first(),
+        )
+        .toPromise();
+    } else if (!this._isRemindersLoaded$.getValue()) {
       throw new Error('Reminders not loaded initially when trying to save model');
     }
     console.log('saveReminders', reminders);
-    await this._persistenceService.reminders.saveState(reminders, {
-      isSyncModelChange: true,
+    await this._pfapiService.m.reminders.save(reminders, {
+      isUpdateRevAndLastUpdate: true,
     });
     this._updateRemindersInWorker(this._reminders);
     this._reminders$.next(this._reminders);

@@ -14,16 +14,15 @@ import { TaskService } from '../../features/tasks/task.service';
 import { PomodoroService } from '../../features/pomodoro/pomodoro.service';
 import { T } from '../../t.const';
 import { fadeAnimation } from '../../ui/animations/fade.ani';
-import { filter, first, map, startWith, switchMap } from 'rxjs/operators';
+import { filter, map, startWith, switchMap } from 'rxjs/operators';
 import { Observable, of, Subscription } from 'rxjs';
 import { WorkContextService } from '../../features/work-context/work-context.service';
-import { TagService } from '../../features/tag/tag.service';
 import { Tag } from '../../features/tag/tag.model';
 import { Project } from '../../features/project/project.model';
 import { expandFadeHorizontalAnimation } from '../../ui/animations/expand.ani';
 import { SimpleCounterService } from '../../features/simple-counter/simple-counter.service';
 import { SimpleCounter } from '../../features/simple-counter/simple-counter.model';
-import { SyncProviderService } from '../../imex/sync/sync-provider.service';
+import { SyncWrapperService } from '../../imex/sync/sync-wrapper.service';
 import { SnackService } from '../../core/snack/snack.service';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { GlobalConfigService } from '../../features/config/global-config.service';
@@ -45,6 +44,7 @@ import { LongPressDirective } from '../../ui/longpress/longpress.directive';
 import { isOnline$ } from '../../util/is-online';
 import { Store } from '@ngrx/store';
 import { showFocusOverlay } from '../../features/focus-mode/store/focus-mode.actions';
+import { SyncStatus } from '../../pfapi/api';
 
 @Component({
   selector: 'main-header',
@@ -79,9 +79,8 @@ export class MainHeaderComponent implements OnInit, OnDestroy {
   readonly pomodoroService = inject(PomodoroService);
   readonly layoutService = inject(LayoutService);
   readonly simpleCounterService = inject(SimpleCounterService);
-  readonly syncProviderService = inject(SyncProviderService);
+  readonly syncWrapperService = inject(SyncWrapperService);
   readonly globalConfigService = inject(GlobalConfigService);
-  private readonly _tagService = inject(TagService);
   private readonly _renderer = inject(Renderer2);
   private readonly _snackService = inject(SnackService);
   private readonly _router = inject(Router);
@@ -110,7 +109,7 @@ export class MainHeaderComponent implements OnInit, OnDestroy {
             }
             return currentTask.projectId
               ? this.projectService.getByIdOnce$(currentTask.projectId)
-              : this._tagService.getTagById$(currentTask.tagIds[0]).pipe(first());
+              : of(null);
           }),
         ),
       ),
@@ -152,9 +151,18 @@ export class MainHeaderComponent implements OnInit, OnDestroy {
   }
 
   sync(): void {
-    this.syncProviderService.sync().then((r) => {
-      if (r === 'SUCCESS') {
+    this.syncWrapperService.sync().then((r) => {
+      if (
+        r === SyncStatus.UpdateLocal ||
+        r === SyncStatus.UpdateRemoteAll ||
+        r === SyncStatus.UpdateRemote
+      ) {
         this._snackService.open({ type: 'SUCCESS', msg: T.F.SYNC.S.SUCCESS_VIA_BUTTON });
+      } else if (r === SyncStatus.InSync) {
+        this._snackService.open({
+          type: 'SUCCESS',
+          msg: T.F.SYNC.S.ALREADY_IN_SYNC,
+        });
       }
     });
   }

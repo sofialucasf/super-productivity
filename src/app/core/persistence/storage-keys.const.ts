@@ -1,6 +1,6 @@
-import { AppDataComplete } from '../../imex/sync/sync.model';
+import { AppDataCompleteLegacy } from '../../imex/sync/sync.model';
 
-export type AllowedDBKeys = keyof AppDataComplete | 'SUP_COMPLETE_BACKUP';
+export type AllowedDBKeys = keyof AppDataCompleteLegacy | 'SUP_COMPLETE_BACKUP';
 
 // INDEXEDDB
 export enum DB {
@@ -13,6 +13,8 @@ export enum DB {
 
 // REAL LS
 export enum LS {
+  APP_START_COUNT = 'APP_START_COUNT',
+  APP_START_COUNT_LAST_START_DAY = 'APP_START_COUNT_LAST_START_DAY',
   LAST_LOCAL_SYNC_MODEL_CHANGE = 'SUP_LAST_LOCAL_SYNC_MODEL_CHANGE',
   LOCAL_UI_HELPER = 'SUP_UI_HELPER',
 
@@ -38,7 +40,10 @@ export enum LS {
 
   FOCUS_MODE_MODE = 'FOCUS_MODE_MODE',
 
+  DARK_MODE = 'DARK_MODE',
+
   SELECTED_BOARD = 'SELECTED_BOARD',
+  DONE_TASKS_HIDDEN = 'DONE_TASKS_HIDDEN',
 }
 
 // SESSION STORAGE

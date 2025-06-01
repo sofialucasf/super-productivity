@@ -1,7 +1,12 @@
 import { JiraOriginalTransition } from './jira-api-responses';
 import { BaseIssueProviderCfg } from '../../issue.model';
 
-export type JiraTransitionOption = 'ALWAYS_ASK' | 'DO_NOT' | JiraOriginalTransition;
+// TODO this needs to be addressed to be either string or JiraOriginalTransition, but not both
+export type JiraTransitionOption =
+  | 'ALWAYS_ASK'
+  | 'DO_NOT'
+  | JiraOriginalTransition
+  | string;
 
 export enum JiraWorklogExportDefaultTime {
   AllTime = 'AllTime',
@@ -12,7 +17,8 @@ export enum JiraWorklogExportDefaultTime {
 
 export interface JiraTransitionConfig {
   // NOTE: keys mirror IssueLocalState type
-  // OPEN: JiraTransitionOption;
+  // todo remove this with a proper migration since currently not used
+  OPEN?: JiraTransitionOption;
   IN_PROGRESS: JiraTransitionOption;
   DONE: JiraTransitionOption;
 }

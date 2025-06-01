@@ -26,7 +26,6 @@
   },
   "CONFIRM": {
     "AUTO_FIX": "Your data seems to be damaged (\"{{validityError}}\"). Do you want to try to automatically fix it? This might result in partial data loss.",
-    "DELETE_STRAY_BACKUP": "Do you want to delete the back to avoid seeing this dialog?",
     "RELOAD_AFTER_IDB_ERROR": "Cannot access database :( Possible causes are an app update to the app in the background or low disk space. If you installed the app on linux as snap you also want to enable refresh awareness 'snap set core experimental.refresh-app-awareness=true' until they fix this issue on their side. Press OK to reload the app (might require manual restarting the app on some platforms).",
     "RESTORE_FILE_BACKUP": "There seems to be NO DATA, but there are backups available at \"{{dir}}\". Do you want to restore the latest backup from {{from}}?",
     "RESTORE_FILE_BACKUP_ANDROID": "There seems to be NO DATA, but there is a backup available. Do you want to load it?",
@@ -77,6 +76,10 @@
       },
       "FORM": {
         "ADD_NEW_PANEL": "Add new Panel",
+        "BACKLOG_TASK_FILTER_ALL": "All",
+        "BACKLOG_TASK_FILTER_NO_BACKLOG": "Exclude",
+        "BACKLOG_TASK_FILTER_ONLY_BACKLOG": "Backlog only",
+        "BACKLOG_TASK_FILTER_TYPE": "Backlog tasks",
         "COLUMNS": "Columns",
         "TAGS_EXCLUDED": "Excluded Tags",
         "TAGS_REQUIRED": "Required Tags",
@@ -143,6 +146,12 @@
       "S": {
         "UPDATE_SECTION": "Updated settings for <strong>{{sectionKey}}</strong>"
       }
+    },
+    "D_RATE": {
+      "A_HOW": "How and where to rate",
+      "BTN_DONT_BOTHER": "Don't bother me again",
+      "TITLE": "🙈 Please forgive us, but...",
+      "TXT": "You would help the project immensely by <strong>giving it a good rating, if you like it!</strong>"
     },
     "DOMINA_MODE": {
       "FORM": {
@@ -621,11 +630,6 @@
           "ADD_TO_TODAY": "Add to Today",
           "RE_PLAN_ALL": "Reschedule all",
           "TITLE": "Add planned tasks to Today"
-        },
-        "PLAN_FOR_DAY": {
-          "REMINDER_WARNING": "This will remove the reminder from the task! Press Escape to cancel.",
-          "REMOVE_PLAN_DATE": "Remove plan date",
-          "TITLE": "Plan Task for Day"
         }
       },
       "EDIT_REPEATED_TASK": "Edit repeated task '{{taskName}}'",
@@ -855,12 +859,12 @@
     "SYNC": {
       "A": {
         "ARCHIVE_ONLY_UPLOADED": "Your data was only partially uploaded. Please try again later! Otherwise you will not be able to sync your data to other devices.",
-        "POSSIBLE_LEGACY_DATA": "Super Productivity has improved syncing by now using two separate files rather than a single one, allowing for much less data transfer. It is recommended to update all instances of Super Productivity and to first sync data from the app instance where the data is newest. If this is the data from your local device then please ignore this warning and just proceed to upload it by confirming the next dialog."
+        "POSSIBLE_LEGACY_DATA": "Super Productivity has improved syncing by now using two separate files rather than a single one, allowing for much less data transfer. It is recommended to update all instances of Super Productivity and to first sync data from the app instance where the data is newest. If this is the data from your local device then please ignore this warning and just proceed to upload it by confirming the next dialog.",
+        "REMOTE_MODEL_VERSION_NEWER": "The remote model version is newer than the local one. Please update your local app to the newest version!"
       },
       "C": {
         "EMPTY_SYNC": "You're trying to sync an empty data object. If you are trying to setup syncing from a new app instance, just press OK to load the data from the server. Otherwise, please check your data.",
-        "FORCE_IMPORT": "Import remote data anyway?",
-        "FORCE_UPLOAD": "Upload local data anyway?",
+        "FORCE_UPLOAD": "Forcing an upload of your data could lead to data loss. Continue?",
         "FORCE_UPLOAD_AFTER_ERROR": "An Error occurred while uploading your local data. Try to force the update?",
         "MIGRATE_LEGACY": "Legacy data detected while importing, do you want to try to migrate it?",
         "NO_REMOTE_DATA": "No remote data found. Upload local to Remote?",
@@ -884,10 +888,21 @@
         "USE_LOCAL": "Keep local",
         "USE_REMOTE": "Keep remote"
       },
+      "D_DECRYPT_ERROR": {
+        "BTN_OVER_WRITE_REMOTE": "Change and overwrite remote",
+        "P1": "Your data is encrypted and decryption failed. Please enter the correct password!",
+        "P2": "You can also change your password, which will overwrite all remote data."
+      },
       "D_INCOMPLETE_SYNC": {
         "BTN_CLOSE_APP": "Close App",
         "BTN_DOWNLOAD_BACKUP": "Download Local Backup",
         "BTN_FORCE_UPLOAD": "Force Upload Local",
+        "P1": "The remote sync data is incoherent!",
+        "P2": "Affected model:",
+        "P3": "You have 2 Options:",
+        "P4": "1. Go to your other device and attempt do a complete sync there.",
+        "P5": "2. Overwrite the remote data with your local data. All remote changes will be lost!",
+        "P6": "Creating a backup of the data you overwrite is recommended!!!",
         "T1": "Last sync was incomplete!",
         "T2": "Your archive data was not properly uploaded during last sync:",
         "T3": "You have 2 Options:",
@@ -935,6 +950,9 @@
       "S": {
         "ALREADY_IN_SYNC": "Already in sync",
         "ALREADY_IN_SYNC_NO_LOCAL_CHANGES": "No local changes – Already in sync",
+        "BTN_CONFIGURE": "Configure",
+        "BTN_FORCE_OVERWRITE": "Force Overwrite",
+        "ERROR_DATA_IS_CURRENTLY_WRITTEN": "Remote Data is currently being written",
         "ERROR_FALLBACK_TO_BACKUP": "Something went wrong while importing the data. Falling back to local backup.",
         "ERROR_INVALID_DATA": "Error while syncing. Invalid data",
         "ERROR_NO_REV": "No valid rev for remote file",
@@ -942,6 +960,7 @@
         "IMPORTING": "Importing data",
         "INCOMPLETE_CFG": "Authentication for sync failed. Please check your Config!",
         "INITIAL_SYNC_ERROR": "Initial Sync failed",
+        "SUCCESS_DOWNLOAD": "Synced data from remote",
         "SUCCESS_IMPORT": "Data imported",
         "SUCCESS_VIA_BUTTON": "Data successfully synced",
         "UNKNOWN_ERROR": "Unknown Sync Error: {{err}}",
@@ -992,6 +1011,7 @@
         "ADD_ATTACHMENT": "Add attachment",
         "ADD_SUB_TASK": "Add Sub Task",
         "ATTACHMENTS": "Attachments ({{nr}})",
+        "DUE": "Planned at",
         "FROM_PARENT": "(from Parent)",
         "LOCAL_ATTACHMENTS": "Local Attachments",
         "NOTES": "Description",
@@ -999,7 +1019,6 @@
         "REMINDER": "Reminder",
         "REPEAT": "Repeat",
         "SCHEDULE_TASK": "Schedule Task",
-        "SCHEDULED_AT": "Scheduled at",
         "SUB_TASKS": "Sub Tasks ({{nr}})",
         "TIME": "Time",
         "TITLE_PLACEHOLDER": "Enter a title"
@@ -1023,8 +1042,9 @@
         "MARK_DONE": "Mark as done",
         "MARK_UNDONE": "Mark as undone",
         "MOVE_TO_BACKLOG": "Move to backlog",
-        "MOVE_TO_OTHER_PROJECT": "Move to other Project",
-        "MOVE_TO_TODAY": "Move to today's list",
+        "MOVE_TO_OTHER_PROJECT": "Move to Project",
+        "MOVE_TO_REGULAR": "Move to regular list",
+        "MOVE_TO_TOP": "Move to Top",
         "OPEN_ATTACH": "Attach file or link",
         "OPEN_ISSUE": "Open in browser",
         "OPEN_TIME": "Time Tracking",
@@ -1039,6 +1059,7 @@
         "TOGGLE_TAGS": "Toggle Tags",
         "TRACK_TIME": "Start tracking time",
         "TRACK_TIME_STOP": "Pause tracking time",
+        "UNSCHEDULE_TASK": "Unschedule task",
         "UPDATE_ISSUE_DATA": "Update issue data"
       },
       "D_CONFIRM_SHORT_SYNTAX_NEW_TAG": {
@@ -1052,11 +1073,9 @@
       "D_REMINDER_VIEW": {
         "ADD_ALL_TO_TODAY": "Add all to today",
         "ADD_TO_TODAY": "Add to today",
-        "DISMISS": "Dismiss Reminder",
-        "DISMISS_ALL": "Dismiss all",
         "DONE": "Done",
-        "DUE_TASK": "Due task",
-        "DUE_TASKS": "Due tasks",
+        "DUE_TASK": "Reminder for planned task",
+        "DUE_TASKS": "Reminder for planned tasks",
         "FOR_CURRENT": "Task is due. Do you want to start working on it?",
         "FOR_OTHER": "Task is due. Do you want to start working on it?",
         "FROM_PROJECT": "From Project: \"{{title}}\"",
@@ -1066,7 +1085,9 @@
         "SNOOZE": "Snooze",
         "SNOOZE_ALL": "Snooze all",
         "START": "Start",
-        "SWITCH_CONTEXT_START": "Switch Context & Start"
+        "SWITCH_CONTEXT_START": "Switch Context & Start",
+        "UNSCHEDULE": "Unschedule",
+        "UNSCHEDULE_ALL": "Unschedule all"
       },
       "D_SCHEDULE_TASK": {
         "MOVE_TO_BACKLOG": "Move task to backlog until scheduled",
@@ -1107,16 +1128,17 @@
       },
       "S": {
         "CANNOT_ASSIGN_PROJECT_FOR_REPEATABLE_TASK": "Cannot assign project via short syntax for repeatable tasks!",
-        "CREATED_FOR_PROJECT": "Moved task \"{{taskTitle}}\" to project \"{{projectTitle}}\"",
+        "CREATED_FOR_PROJECT": "Created task \"{{taskTitle}}\" for project \"{{projectTitle}}\"",
         "CREATED_FOR_PROJECT_ACTION": "Go to Project",
         "DELETED": "Deleted task \"{{title}}\"",
         "FOUND_MOVE_FROM_BACKLOG": "Moved task <strong>{{title}}</strong> from backlog to todays task list",
         "FOUND_MOVE_FROM_OTHER_LIST": "Added task <strong>{{title}}</strong> from <strong>{{contextTitle}}</strong> to current list",
         "FOUND_RESTORE_FROM_ARCHIVE": "Restored task <strong>{{title}}</strong> related to issue from archive",
         "LAST_TAG_DELETION_WARNING": "You're trying to remove the last tag of a non project task. This is not allowed!",
+        "MOVED_TO_ARCHIVE": "Moved {{nr}} tasks to archive",
         "MOVED_TO_PROJECT": "Moved task \"{{taskTitle}}\" to project \"{{projectTitle}}\"",
         "MOVED_TO_PROJECT_ACTION": "Go to Project",
-        "REMINDER_ADDED": "Scheduled task \"{{title}}\"",
+        "REMINDER_ADDED": "Scheduled <strong>{{title}}</strong> at <strong>{{date}}</strong>",
         "REMINDER_DELETED": "Deleted reminder for task",
         "REMINDER_UPDATED": "Updated reminder for task \"{{title}}\"",
         "TASK_CREATED": "Created task \"{{title}}\""
@@ -1305,6 +1327,8 @@
     "EXPORT_DATA": "Export Data",
     "IMPORT_FROM_FILE": "Import from file",
     "PRIVACY_EXPORT": "Export anonymized data (to send to contact@super-productivity.com for debugging)",
+    "S_BACKUP_DOWNLOADED": "Backup downloaded to android documents folder",
+    "S_ERR_IMPORT_FAILED": "Importing data failed",
     "S_ERR_INVALID_DATA": "Import failed: Invalid JSON"
   },
   "G": {
@@ -1322,6 +1346,7 @@
     "EXTENSION_INFO": "Please <a target=\"_blank\" href=\"https://chrome.google.com/webstore/detail/super-productivity/ljkbjodfmekklcoibdnhahlaalhihmlb\"> download the chrome extension</a> in order to allow communication with the Jira Api and Idle Time Handling. Note that this doesn't work for mobile. <strong>Without the extension the features will not work!!</strong>",
     "HIDE": "Hide",
     "ICON_INP_DESCRIPTION": "All utf-8 emojis are also supported!",
+    "INBOX_PROJECT_TITLE": "Inbox",
     "LOGIN": "Login",
     "LOGOUT": "Logout",
     "MINUTES": "{{m}} minutes",
@@ -1331,6 +1356,7 @@
     "NO_CON": "You are currently offline. Please reconnect to the internet.",
     "NONE": "None",
     "OK": "Ok",
+    "OVERDUE": "Overdue",
     "PREVIOUS": "Previous",
     "REMOVE": "Remove",
     "RESET": "Reset",
@@ -1403,7 +1429,7 @@
       "MOVE_TASK_TO_TOP": "Move Task to the top of the List",
       "MOVE_TASK_UP": "Move Task up in List",
       "MOVE_TO_BACKLOG": "Move Task to Task Backlog",
-      "MOVE_TO_TODAYS_TASKS": "Move Task to Today\"s Task List",
+      "MOVE_TO_REGULARS_TASKS": "Move Task to Today\"s Task List",
       "OPEN_PROJECT_NOTES": "Show/Hide Notes",
       "SAVE_NOTE": "Save note",
       "SELECT_NEXT_TASK": "Select next Task",
@@ -1473,6 +1499,7 @@
       "IS_DISABLE_ANIMATIONS": "Disable all animations",
       "IS_HIDE_NAV": "Hide navigation until main header is hovered (desktop only)",
       "IS_MINIMIZE_TO_TRAY": "Minimize to tray (desktop only)",
+      "IS_SHOW_TIP_LONGER": "Show productivity tip on app start a little longer",
       "IS_TRAY_SHOW_CURRENT_TASK": "Show current task in the tray / status menu (desktop mac/windows only)",
       "IS_TURN_OFF_MARKDOWN": "Turn off markdown parsing for task notes",
       "IS_USE_MINIMAL_SIDE_NAV": "Use minimal navigation bar (show only icons)",
@@ -1515,7 +1542,7 @@
     },
     "SHORT_SYNTAX": {
       "HELP": "<p>Here you can control short syntax options when creating a task</p>",
-      "IS_ENABLE_DUE": "Enable due short syntax (@<Due time>)",
+      "IS_ENABLE_DUE": "Enable planned at short syntax (@<planned time>)",
       "IS_ENABLE_PROJECT": "Enable project short syntax (+<Project name>)",
       "IS_ENABLE_TAG": "Enable tag short syntax (#<Tag>)",
       "TITLE": "Short Syntax"
@@ -1584,6 +1611,7 @@
   },
   "MH": {
     "ADD_NEW_TASK": "Add new Task",
+    "ALL_PLANNED_LIST": "Planned / Repeat",
     "BOARDS": "Boards",
     "CREATE_PROJECT": "Create Project",
     "CREATE_TAG": "Create Tag",
@@ -1602,6 +1630,7 @@
       "SYNC": "Howto: Configure Sync"
     },
     "METRICS": "Metrics",
+    "NO_PROJECT_INFO": "No projects available. You can create a new project by clicking the \"Create Project\" button.",
     "NO_TAG_INFO": "There are currently no tags. You can add tags by entering `#yourTagName` when adding or editing tasks.",
     "NOTES": "Notes",
     "NOTES_PANEL_INFO": "Notes can only be shown from the schedule and the regular task list views.",
@@ -1611,7 +1640,6 @@
     "PROJECT_SETTINGS": "Project Settings",
     "PROJECTS": "Projects",
     "QUICK_HISTORY": "Quick History",
-    "REPEAT_SCHEDULED": "Repeat/Scheduled",
     "SCHEDULE": "Schedule",
     "SETTINGS": "Settings",
     "SHOW_SEARCH_BAR": "Show Search Bar",
@@ -1625,7 +1653,15 @@
     "TRIGGER_SYNC": "Sync!",
     "WORKLOG": "Worklog"
   },
+  "MIGRATE": {
+    "C_DOWNLOAD_BACKUP": "Do you want to download a backup of your legacy data (can be used with older versions of Super Productivity)?",
+    "DETECTED_LEGACY": "Detected legacy data. We will migrate it for you!",
+    "E_MIGRATION_FAILED": "Migration failed! with Error:",
+    "E_RESTART_FAILED": "Automatic restart failed. Please restart the app manually!",
+    "SUCCESS": "Migration all done! Restarting app now..."
+  },
   "PDS": {
+    "ADD_TASKS_FROM_TODAY": "Add tasks from today",
     "BACK": "Wait I forgot something!",
     "BREAK_LABEL": "Breaks (nr / time)",
     "CELEBRATE": "Take a moment to <i>celebrate!</i>",
@@ -1678,9 +1714,9 @@
     "NO_REPEATABLE_TASKS": "There are currently no repeated tasks. You can schedule a task by choosing \"Repeat Task\" in the task side panel. To open it click on the most right icon that appears when hovering a task (or just tap on the task on mobile).",
     "NO_SCHEDULED": "There are currently no scheduled tasks. You can schedule a task by choosing \"Schedule Task\" in the task context menu. To open it right click (long press on mobile) on a task.",
     "NO_SCHEDULED_TITLE": "Scheduled Tasks for Day",
-    "REPEATED_TASKS": "Repeated tasks",
+    "REPEATED_TASKS": "Repeated Tasks",
     "SCHEDULED_TASKS": "Scheduled tasks",
-    "SCHEDULED_TASKS_WITH_REMINDER": "Scheduled tasks with reminder",
+    "SCHEDULED_TASKS_WITH_TIME": "Scheduled Tasks with Start Time",
     "START_TASK": "Start task and remove reminder"
   },
   "THEMES": {
@@ -1704,6 +1740,7 @@
   "V": {
     "E_1TO10": "Please enter a value between 1 and 10",
     "E_DATETIME": "The entered value is not a datetime!",
+    "E_DURATION": "Please enter a valid duration (e.g. 1h)",
     "E_MAX": "Should not be bigger than {{val}}",
     "E_MAX_LENGTH": "Should be max {{val}} characters long",
     "E_MIN": "Should not be smaller than {{val}}",
@@ -1713,18 +1750,19 @@
   },
   "WW": {
     "ADD_MORE": "Add more",
-    "ADD_SCHEDULED_FOR_TODAY": "Add tasks planned for today ({{nr}})",
     "ADD_SCHEDULED_FOR_TOMORROW": "Add tasks planned for tomorrow ({{nr}})",
     "ADD_SOME_TASKS": "Add some tasks to plan your day!",
-    "COMPLETED_TASKS": "Completed Tasks",
+    "DONE_TASKS": "Done Tasks",
+    "DONE_TASKS_IN_ARCHIVE": "There are currently no done tasks here, but there are some already archived.",
     "ESTIMATE_REMAINING": "Estimate remaining:",
     "FINISH_DAY": "Finish Day",
     "FINISH_DAY_FOR_PROJECT": "Finish Day for this Project",
     "FINISH_DAY_FOR_TAG": "Finish Day for this Tag",
     "FINISH_DAY_TOOLTIP": "Evaluate your day, move all done tasks to the archive (optionally) and/or plan your next day.",
     "HELP_PROCRASTINATION": "Help I'm procrastinating!",
-    "NO_COMPLETED_TASKS": "There are currently no completed tasks",
-    "NO_PLANNED_TASKS": "No planned tasks",
+    "MOVE_DONE_TO_ARCHIVE": "Move done to archive",
+    "NO_DONE_TASKS": "There are currently no done tasks",
+    "NO_PLANNED_TASKS": "no tasks planned",
     "READY_TO_WORK": "Ready to work!",
     "RESET_BREAK_TIMER": "Reset without break timer",
     "TIME_ESTIMATED": "Time Estimated:",

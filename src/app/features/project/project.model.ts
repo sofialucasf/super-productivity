@@ -1,4 +1,4 @@
-import { IssueIntegrationCfgs, IssueProviderKey } from '../issue/issue.model';
+import { IssueProviderKey } from '../issue/issue.model';
 import {
   WorkContextAdvancedCfgKey,
   WorkContextCommon,
@@ -6,13 +6,14 @@ import {
 import { EntityState } from '@ngrx/entity';
 import { MODEL_VERSION_KEY } from '../../app.constants';
 
-export type RoundTimeOption = '5M' | 'QUARTER' | 'HALF' | 'HOUR' | null;
+export type RoundTimeOption = '5M' | 'QUARTER' | 'HALF' | 'HOUR' | null | undefined;
 
 export interface ProjectBasicCfg {
   title: string;
-  isHiddenFromMenu: boolean;
-  isArchived: boolean;
-  isEnableBacklog: boolean;
+  // TODO remove maybe
+  isArchived?: boolean;
+  isHiddenFromMenu?: boolean;
+  isEnableBacklog?: boolean;
   taskIds: string[];
   backlogTaskIds: string[];
   noteIds: string[];
@@ -21,7 +22,9 @@ export interface ProjectBasicCfg {
 export interface ProjectCopy extends ProjectBasicCfg, WorkContextCommon {
   id: string;
   // TODO legacy remove
-  issueIntegrationCfgs?: IssueIntegrationCfgs;
+  // issueIntegrationCfgs?: IssueIntegrationCfgs | { [key: string]: any };
+  // to make it simpler for validation
+  issueIntegrationCfgs?: any;
 }
 
 export type Project = Readonly<ProjectCopy>;

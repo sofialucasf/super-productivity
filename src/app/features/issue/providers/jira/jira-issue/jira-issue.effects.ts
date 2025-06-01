@@ -254,7 +254,8 @@ export class JiraIssueEffects {
     jiraCfg: IssueProviderJira,
     task: Task,
   ): Observable<any> {
-    const chosenTransition: JiraTransitionOption = jiraCfg.transitionConfig[localState];
+    const chosenTransition: JiraTransitionOption | undefined =
+      jiraCfg.transitionConfig[localState];
 
     if (!task.issueId) {
       throw new Error('No issueId for task');
@@ -270,7 +271,10 @@ export class JiraIssueEffects {
             concatMap((issue) => this._openTransitionDialog(issue, localState, task)),
           );
       default:
-        if (!chosenTransition || !chosenTransition.id) {
+        if (
+          !chosenTransition ||
+          !(typeof chosenTransition === 'object' && chosenTransition?.id)
+        ) {
           this._snackService.open({
             msg: T.F.JIRA.S.NO_VALID_TRANSITION,
             type: 'ERROR',

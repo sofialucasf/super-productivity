@@ -1,10 +1,9 @@
 import { GlobalConfigState } from './global-config.model';
-import { DEFAULT_PROJECT_ID } from '../project/project.const';
-import { TRACKING_INTERVAL } from 'src/app/app.constants';
-import { getDefaultVoice } from 'src/app/features/domina-mode/getAvailableVoices';
+import { getDefaultVoice } from '../domina-mode/getAvailableVoices';
+import { TRACKING_INTERVAL } from '../../app.constants';
+
 const minute = 60 * 1000;
 const defaultVoice = getDefaultVoice();
-console.log('Setting default voice as' + defaultVoice);
 
 export const DEFAULT_DAY_START = '9:00';
 export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
@@ -12,7 +11,6 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
     lng: null,
   },
   misc: {
-    darkMode: 'system',
     isConfirmBeforeExit: false,
     isConfirmBeforeExitWithoutFinishDay: true,
     isAutMarkParentAsDone: false,
@@ -20,11 +18,12 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
     isAutoAddWorkedOnToToday: true,
     isMinimizeToTray: false,
     isTrayShowCurrentTask: true,
-    defaultProjectId: DEFAULT_PROJECT_ID,
+    defaultProjectId: null,
     firstDayOfWeek: 1,
     startOfNextDay: 0,
     isUseMinimalNav: false,
     isDisableAnimations: false,
+    isShowTipLonger: false,
     taskNotesTpl: `**How can I best achieve it now?**
 
 **What do I want?**
@@ -138,7 +137,7 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
   sound: {
     volume: 75,
     isIncreaseDoneSoundPitch: true,
-    doneSound: 'done2.mp3',
+    doneSound: 'ding-small-bell.mp3',
     breakReminderSound: null,
     trackTimeSound: null,
   },
@@ -172,15 +171,9 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
     // TODO maybe enable later if it works well
     isCompressionEnabled: false,
     isEncryptionEnabled: false,
-    encryptionPassword: null,
+    encryptKey: null,
     syncProvider: null,
     syncInterval: minute,
-
-    dropboxSync: {
-      accessToken: null,
-      refreshToken: null,
-      _tokenExpiresAt: undefined,
-    },
 
     webDav: {
       baseUrl: null,
@@ -190,7 +183,7 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfigState = {
     },
 
     localFileSync: {
-      syncFolderPath: 'super-productivity',
+      syncFolderPath: '',
     },
   },
 };

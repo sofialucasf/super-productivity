@@ -1,9 +1,27 @@
+import { IS_ANDROID_WEB_VIEW } from './util/is-android-web-view';
+
 export const IS_ELECTRON = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+// effectively IS_BROWSER
+export const IS_WEB_EXTENSION_REQUIRED_FOR_JIRA = !IS_ELECTRON && !IS_ANDROID_WEB_VIEW;
+
+// TODO merge and remove one of these
 export const TRACKING_INTERVAL = 1000;
+export const TIME_TRACKING_TO_DB_INTERVAL = 15000;
 
 export const MODEL_VERSION_KEY = '__modelVersion';
 export const DRAG_DELAY_FOR_TOUCH = 75;
 export const DRAG_DELAY_FOR_TOUCH_LONGER = 150;
+
+// TODO use
+// const CORS_SKIP_EXTRA_HEADER_PROP = 'sp_cors_skip' as const;
+// export const CORS_SKIP_EXTRA_HEADERS: { [name: string]: string } = IS_ANDROID_WEB_VIEW
+//   ? ({
+//       [CORS_SKIP_EXTRA_HEADER_PROP]: 'true',
+//     } as const)
+//   : {};
+export const CORS_SKIP_EXTRA_HEADERS: { [name: string]: string } = IS_ANDROID_WEB_VIEW
+  ? {}
+  : {};
 
 import '@angular/common/locales/global/en';
 import '@angular/common/locales/global/es';
@@ -26,27 +44,6 @@ import '@angular/common/locales/global/nl';
 import '@angular/common/locales/global/nb';
 import '@angular/common/locales/global/hr';
 import '@angular/common/locales/global/uk';
-
-export const DAY_STARTS_AT_DEFAULT_H = 9;
-export const DAY_STARTS_AT: string = '9:00';
-
-export const ALL_THEMES: string[] = [
-  'blue',
-  'blue-grey',
-  'light-blue',
-  'indigo',
-  'pink',
-  'purple',
-  'deep-purple',
-  'cyan',
-  'teal',
-  'green',
-  'light-green',
-  'lime',
-  'yellow',
-  'amber',
-  'deep-orange',
-];
 
 export enum LanguageCode {
   ar = 'ar',

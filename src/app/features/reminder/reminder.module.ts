@@ -28,6 +28,7 @@ import { T } from 'src/app/t.const';
   declarations: [],
   imports: [CommonModule],
 })
+// TODO move to effect
 export class ReminderModule {
   private readonly _reminderService = inject(ReminderService);
   private readonly _matDialog = inject(MatDialog);
@@ -97,7 +98,7 @@ export class ReminderModule {
             this._reminderService.removeReminder(oldest.id);
             this._taskService.update(oldest.relatedId, {
               reminderId: undefined,
-              plannedAt: undefined,
+              dueWithTime: undefined,
             });
           } else {
             this._matDialog

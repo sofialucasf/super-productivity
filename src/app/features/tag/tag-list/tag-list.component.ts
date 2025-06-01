@@ -11,13 +11,13 @@ import { Task } from '../../tasks/task.model';
 import { WorkContextService } from '../../work-context/work-context.service';
 import { WorkContextType } from '../../work-context/work-context.model';
 import { expandFadeAnimation } from '../../../ui/animations/expand.ani';
-import { NO_LIST_TAG } from '../tag.const';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import { selectTagFeatureState } from '../store/tag.reducer';
 import { selectProjectFeatureState } from '../../project/store/project.selectors';
 import { Project } from '../../project/project.model';
 import { TagComponent } from '../tag/tag.component';
+import { DEFAULT_PROJECT_COLOR } from '../../work-context/work-context.const';
 
 @Component({
   selector: 'tag-list',
@@ -51,9 +51,7 @@ export class TagListComponent {
       ? tagsToHide.length > 0
         ? this.tagIds().filter((id) => !tagsToHide.includes(id))
         : this.tagIds()
-      : this.tagIds().filter(
-          (id) => id !== this.workContext()?.activeId && id !== NO_LIST_TAG.id,
-        );
+      : this.tagIds().filter((id) => id !== this.workContext()?.activeId);
 
     const tagsI = tagIdsFiltered.map((id) => this.tagState()?.entities[id]);
     const projectId = this.projectId();
@@ -61,7 +59,7 @@ export class TagListComponent {
     if (project) {
       const projectTag: Tag = {
         ...project,
-        color: project.theme.primary,
+        color: project.theme.primary || DEFAULT_PROJECT_COLOR,
         created: 0,
         icon: project.icon || 'folder_special',
       };

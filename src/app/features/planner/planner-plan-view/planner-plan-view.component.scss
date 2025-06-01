@@ -3,6 +3,7 @@
 :host {
   overflow: auto;
   display: flex;
+  height: 100%;
 }
 
 .days {
@@ -16,5 +17,10 @@
 
   @include mq(xs) {
     gap: 24px;
+  }
+
+  @include mq(xs, max) {
+    display: block;
+    max-width: 100%;
   }
 }

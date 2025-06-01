@@ -15,7 +15,7 @@ enum TaskActionTypes {
   'UpdateTaskUi' = '[Task] Update Task Ui',
   'UpdateTaskTags' = '[Task] Update Task Tags',
   'RemoveTagsForAllTasks' = '[Task] Remove Tags from all Tasks',
-  'ToggleTaskShowSubTasks' = '[Task] Toggle Show Sub Tasks',
+  'ToggleTaskHideSubTasks' = '[Task] Toggle Show Sub Tasks',
   'UpdateTask' = '[Task] Update Task',
   'UpdateMTasksSimple' = '[Task] Update multiple Tasks (simple)',
   'UpdateTasks' = '[Task] Update Tasks',
@@ -32,9 +32,12 @@ enum TaskActionTypes {
   'RemoveTimeSpent' = '[Task] Remove time spent',
 
   // Reminders & StartAt
-  'ScheduleTask' = '[Task] Schedule',
+  'ScheduleTaskWithTime' = '[Task] Schedule with time',
   'UnScheduleTask' = '[Task] UnSchedule',
   'ReScheduleTask' = '[Task] ReSchedule',
+  'AddReminderIdToTask' = '[Task] Add ReminderId to Task',
+
+  'RemoveReminder' = '[Task] Remove Reminder',
 
   // Sub Task Actions
   'AddSubTask' = '[Task] Add SubTask',
@@ -88,6 +91,14 @@ export const updateTask = createAction(
   }>(),
 );
 
+export const addReminderIdToTask = createAction(
+  TaskActionTypes.AddReminderIdToTask,
+  props<{
+    taskId: string;
+    reminderId: string;
+  }>(),
+);
+
 export const __updateMultipleTaskSimple = createAction(
   TaskActionTypes.UpdateMTasksSimple,
   props<{
@@ -115,8 +126,8 @@ export const removeTagsForAllTasks = createAction(
   props<{ tagIdsToRemove: string[] }>(),
 );
 
-export const toggleTaskShowSubTasks = createAction(
-  TaskActionTypes.ToggleTaskShowSubTasks,
+export const toggleTaskHideSubTasks = createAction(
+  TaskActionTypes.ToggleTaskHideSubTasks,
   props<{ taskId: string; isShowLess: boolean; isEndless: boolean }>(),
 );
 
@@ -172,17 +183,6 @@ export const moveSubTaskToBottom = createAction(
   props<{ id: string; parentId: string }>(),
 );
 
-export const addTimeSpent = createAction(
-  TaskActionTypes.AddTimeSpent,
-
-  props<{
-    task: Task;
-    date: string;
-    duration: number;
-    isFromTrackingReminder: boolean;
-  }>(),
-);
-
 export const removeTimeSpent = createAction(
   TaskActionTypes.RemoveTimeSpent,
 
@@ -190,24 +190,24 @@ export const removeTimeSpent = createAction(
 );
 
 // Reminder Actions
-export const scheduleTask = createAction(
-  TaskActionTypes.ScheduleTask,
+export const scheduleTaskWithTime = createAction(
+  TaskActionTypes.ScheduleTaskWithTime,
 
   props<{
     task: Task;
-    plannedAt: number;
+    dueWithTime: number;
     remindAt?: number;
     isMoveToBacklog: boolean;
     isSkipAutoRemoveFromToday?: boolean;
   }>(),
 );
 
-export const reScheduleTask = createAction(
+export const reScheduleTaskWithTime = createAction(
   TaskActionTypes.ReScheduleTask,
 
   props<{
     task: Task;
-    plannedAt: number;
+    dueWithTime: number;
     isMoveToBacklog: boolean;
     remindAt?: number;
   }>(),
@@ -217,6 +217,17 @@ export const unScheduleTask = createAction(
   TaskActionTypes.UnScheduleTask,
 
   props<{ id: string; reminderId?: string; isSkipToast?: boolean }>(),
+);
+
+export const removeReminderFromTask = createAction(
+  TaskActionTypes.RemoveReminder,
+
+  props<{
+    id: string;
+    reminderId: string;
+    isSkipToast?: boolean;
+    isLeaveDueTime?: boolean;
+  }>(),
 );
 
 export const restoreTask = createAction(
@@ -234,7 +245,7 @@ export const addSubTask = createAction(
 export const convertToMainTask = createAction(
   TaskActionTypes.ConvertToMainTask,
 
-  props<{ task: Task; parentTagIds: string[] }>(),
+  props<{ task: Task; parentTagIds: string[]; isPlanForToday?: boolean }>(),
 );
 
 // the _ indicates that it should not be used directly, but always over the service instead

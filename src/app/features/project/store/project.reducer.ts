@@ -1,7 +1,6 @@
 import { createEntityAdapter, EntityAdapter, Update } from '@ngrx/entity';
 import { Project, ProjectState } from '../project.model';
 import { createReducer, on } from '@ngrx/store';
-import { FIRST_PROJECT } from '../project.const';
 import {
   WorkContextAdvancedCfg,
   WorkContextType,
@@ -42,7 +41,6 @@ import { devError } from '../../../util/dev-error';
 import {
   addProject,
   addProjects,
-  addToProjectBreakTime,
   archiveProject,
   deleteProject,
   loadProjects,
@@ -61,8 +59,6 @@ import {
   updateProject,
   updateProjectAdvancedCfg,
   updateProjectOrder,
-  updateProjectWorkEnd,
-  updateProjectWorkStart,
   upsertProject,
 } from './project.actions';
 import {
@@ -72,7 +68,7 @@ import {
   updateNoteOrder,
 } from '../../note/store/note.actions';
 import { MODEL_VERSION } from '../../../core/model-version';
-import { roundTsToMinutes } from '../../../util/round-ts-to-minutes';
+import { INBOX_PROJECT } from '../project.const';
 
 export const PROJECT_FEATURE_NAME = 'projects';
 const WORK_CONTEXT_TYPE: WorkContextType = WorkContextType.PROJECT;
@@ -81,13 +77,28 @@ export const projectAdapter: EntityAdapter<Project> = createEntityAdapter<Projec
 
 // DEFAULT
 // -------
-export const initialProjectState: ProjectState = projectAdapter.getInitialState({
-  ids: [FIRST_PROJECT.id],
-  entities: {
-    [FIRST_PROJECT.id]: FIRST_PROJECT,
-  },
-  [MODEL_VERSION_KEY]: MODEL_VERSION.PROJECT,
-});
+const _addInboxProjectIfNecessary = (state: ProjectState): ProjectState => {
+  if (state.ids && !(state.ids as string[]).includes(INBOX_PROJECT.id)) {
+    state = {
+      ...state,
+      ids: [INBOX_PROJECT.id, ...state.ids] as string[],
+      entities: {
+        ...state.entities,
+        [INBOX_PROJECT.id]: INBOX_PROJECT,
+      },
+    };
+  }
+
+  return state;
+};
+
+export const initialProjectState: ProjectState = _addInboxProjectIfNecessary(
+  projectAdapter.getInitialState({
+    ids: [],
+    entities: {},
+    [MODEL_VERSION_KEY]: MODEL_VERSION.PROJECT,
+  }),
+);
 
 export const projectReducer = createReducer<ProjectState>(
   initialProjectState,
@@ -95,9 +106,11 @@ export const projectReducer = createReducer<ProjectState>(
   // META ACTIONS
   // ------------
   on(loadAllData, (oldState, { appDataComplete }) =>
-    appDataComplete.project
-      ? migrateProjectState({ ...appDataComplete.project })
-      : oldState,
+    _addInboxProjectIfNecessary(
+      appDataComplete.project
+        ? migrateProjectState({ ...appDataComplete.project })
+        : oldState,
+    ),
   ),
 
   on(
@@ -162,7 +175,7 @@ export const projectReducer = createReducer<ProjectState>(
       {
         id,
         changes: {
-          isHiddenFromMenu: !state.entities[id]?.isHiddenFromMenu,
+          isHiddenFromMenu: !(state.entities[id] as Project).isHiddenFromMenu,
         },
       },
       state,
@@ -193,60 +206,6 @@ export const projectReducer = createReducer<ProjectState>(
     ),
   ),
 
-  on(updateProjectWorkStart, (state, { id, date, newVal }) => {
-    const oldP = state.entities[id] as Project;
-    return projectAdapter.updateOne(
-      {
-        id,
-        changes: {
-          workStart: {
-            ...oldP.workStart,
-            [date]: roundTsToMinutes(newVal),
-          },
-        },
-      },
-      state,
-    );
-  }),
-  on(updateProjectWorkEnd, (state, { id, date, newVal }) => {
-    const oldP = state.entities[id] as Project;
-    return projectAdapter.updateOne(
-      {
-        id,
-        changes: {
-          workEnd: {
-            ...oldP.workEnd,
-            [date]: roundTsToMinutes(newVal),
-          },
-        },
-      },
-      state,
-    );
-  }),
-
-  on(addToProjectBreakTime, (state, { id, date, valToAdd }) => {
-    const oldP = state.entities[id] as Project;
-    const oldBreakTime = oldP.breakTime[date] || 0;
-    const oldBreakNr = oldP.breakNr[date] || 0;
-
-    return projectAdapter.updateOne(
-      {
-        id,
-        changes: {
-          breakNr: {
-            ...oldP.breakNr,
-            [date]: oldBreakNr + 1,
-          },
-          breakTime: {
-            ...oldP.breakTime,
-            [date]: oldBreakTime + valToAdd,
-          },
-        },
-      },
-      state,
-    );
-  }),
-
   on(updateProjectAdvancedCfg, (state, { projectId, sectionKey, data }) => {
     const currentProject = state.entities[projectId] as Project;
     const advancedCfg: WorkContextAdvancedCfg = Object.assign(
@@ -271,7 +230,7 @@ export const projectReducer = createReducer<ProjectState>(
   }),
 
   on(updateProjectOrder, (state, { ids }) => {
-    const currentIds = state.ids as string[];
+    const currentIds = state.ids.filter((id) => id !== INBOX_PROJECT.id) as string[];
     let newIds: string[] = ids;
     if (ids.length !== currentIds.length) {
       const allP = currentIds.map((id) => state.entities[id]) as Project[];
@@ -298,7 +257,10 @@ export const projectReducer = createReducer<ProjectState>(
       throw new Error('Project ids are undefined');
     }
 
-    return { ...state, ids: newIds };
+    return {
+      ...state,
+      ids: state.entities[INBOX_PROJECT.id] ? [INBOX_PROJECT.id, ...newIds] : newIds,
+    };
   }),
 
   // MOVE TASK ACTIONS
@@ -518,7 +480,8 @@ export const projectReducer = createReducer<ProjectState>(
   on(moveProjectTaskToRegularListAuto, (state, { taskId, projectId, isMoveToTop }) => {
     const todaysTaskIdsBefore = (state.entities[projectId] as Project).taskIds;
     const backlogIdsBefore = (state.entities[projectId] as Project).backlogTaskIds;
-    return todaysTaskIdsBefore.includes(taskId)
+    // we check if task was in backlog before to avoid moving up sub tasks
+    return todaysTaskIdsBefore.includes(taskId) || !backlogIdsBefore.includes(taskId)
       ? state
       : projectAdapter.updateOne(
           {

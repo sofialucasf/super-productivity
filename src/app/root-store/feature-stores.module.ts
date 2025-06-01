@@ -26,13 +26,11 @@ import { ImprovementEffects } from '../features/metric/improvement/store/improve
 import { issueProvidersFeature } from '../features/issue/store/issue-provider.reducer';
 import { PollToBacklogEffects } from '../features/issue/store/poll-to-backlog.effects';
 import { PollIssueUpdatesEffects } from '../features/issue/store/poll-issue-updates.effects';
-import { IssueProviderDbEffects } from '../features/issue/store/issue-provider-db.effects';
 import { UnlinkAllTasksOnProviderDeletionEffects } from '../features/issue/store/unlink-all-tasks-on-provider-deletion.effects';
 import {
   METRIC_FEATURE_NAME,
   metricReducer,
 } from '../features/metric/store/metric.reducer';
-import { MetricEffects } from '../features/metric/store/metric.effects';
 import { NOTE_FEATURE_NAME, noteReducer } from '../features/note/store/note.reducer';
 import { NoteEffects } from '../features/note/store/note.effects';
 import {
@@ -40,9 +38,6 @@ import {
   obstructionReducer,
 } from '../features/metric/obstruction/store/obstruction.reducer';
 import { ObstructionEffects } from '../features/metric/obstruction/store/obstruction.effects';
-import { plannerFeature } from '../features/planner/store/planner.reducer';
-import { PlannerEffects } from '../features/planner/store/planner.effects';
-import { PlannerInitialDialogEffects } from '../features/planner/store/planner-initial-dialog.effects';
 import {
   POMODORO_FEATURE_NAME,
   pomodoroReducer,
@@ -65,8 +60,8 @@ import {
   taskRepeatCfgReducer,
 } from '../features/task-repeat-cfg/store/task-repeat-cfg.reducer';
 import { TaskRepeatCfgEffects } from '../features/task-repeat-cfg/store/task-repeat-cfg.effects';
+import { TaskDueEffects } from '../features/tasks/store/task-due.effects';
 import { TASK_FEATURE_NAME, taskReducer } from '../features/tasks/store/task.reducer';
-import { TaskDbEffects } from '../features/tasks/store/task-db.effects';
 import { TaskInternalEffects } from '../features/tasks/store/task-internal.effects';
 import { TaskRelatedModelEffects } from '../features/tasks/store/task-related-model.effects';
 import { TaskReminderEffects } from '../features/tasks/store/task-reminder.effects';
@@ -87,18 +82,25 @@ import { DropboxEffects } from '../imex/sync/dropbox/store/dropbox.effects';
 import { FinishDayBeforeCloseEffects } from '../features/finish-day-before-close/finish-day-before-close.effects';
 import { GitlabIssueEffects } from '../features/issue/providers/gitlab/gitlab-issue/gitlab-issue.effects';
 import { JiraIssueEffects } from '../features/issue/providers/jira/jira-issue/jira-issue.effects';
-import { LocalBackupEffects } from '../imex/local-backup/local-backup.effects';
-import { LocalFileSyncElectronEffects } from '../imex/sync/local-file-sync/store/local-file-sync-electron.effects';
 import { OpenProjectEffects } from '../features/issue/providers/open-project/open-project-issue/store/open-project.effects';
 import { ReminderCountdownEffects } from '../features/reminder/store/reminder-countdown.effects';
 import { SyncEffects } from '../imex/sync/sync.effects';
-import { LocalBackupModule } from '../imex/local-backup/local-backup.module';
 import { boardsFeature } from '../features/boards/store/boards.reducer';
-import { BoardsEffects } from '../features/boards/store/boards.effects';
+import { timeTrackingFeature } from '../features/time-tracking/store/time-tracking.reducer';
+import { plannerFeature } from '../features/planner/store/planner.reducer';
+import { PlannerEffects } from '../features/planner/store/planner.effects';
+import { AppStateEffects } from './app-state/app-state.effects';
+import { appStateFeature } from './app-state/app-state.reducer';
+import { SaveToDbEffects } from './shared/save-to-db.effects';
 
 @NgModule({
   declarations: [],
   imports: [
+    EffectsModule.forFeature([SaveToDbEffects]),
+
+    StoreModule.forFeature(appStateFeature),
+    EffectsModule.forFeature([AppStateEffects]),
+
     StoreModule.forFeature(LAYOUT_FEATURE_NAME, layoutReducer),
     EffectsModule.forFeature([LayoutEffects]),
 
@@ -118,21 +120,16 @@ import { BoardsEffects } from '../features/boards/store/boards.effects';
     EffectsModule.forFeature([
       PollToBacklogEffects,
       PollIssueUpdatesEffects,
-      IssueProviderDbEffects,
       UnlinkAllTasksOnProviderDeletionEffects,
     ]),
 
     StoreModule.forFeature(METRIC_FEATURE_NAME, metricReducer),
-    EffectsModule.forFeature([MetricEffects]),
 
     StoreModule.forFeature(NOTE_FEATURE_NAME, noteReducer),
     EffectsModule.forFeature([NoteEffects]),
 
     StoreModule.forFeature(OBSTRUCTION_FEATURE_NAME, obstructionReducer),
     EffectsModule.forFeature([ObstructionEffects]),
-
-    StoreModule.forFeature(plannerFeature),
-    EffectsModule.forFeature([PlannerEffects, PlannerInitialDialogEffects]),
 
     StoreModule.forFeature(POMODORO_FEATURE_NAME, pomodoroReducer),
     EffectsModule.forFeature([PomodoroEffects]),
@@ -151,12 +148,12 @@ import { BoardsEffects } from '../features/boards/store/boards.effects';
 
     StoreModule.forFeature(TASK_FEATURE_NAME, taskReducer),
     EffectsModule.forFeature([
-      TaskDbEffects,
       TaskInternalEffects,
       TaskRelatedModelEffects,
       TaskReminderEffects,
       TaskUiEffects,
       ShortSyntaxEffects,
+      TaskDueEffects,
       ...(IS_ELECTRON ? [TaskElectronEffects] : []),
     ]),
 
@@ -164,7 +161,11 @@ import { BoardsEffects } from '../features/boards/store/boards.effects';
     EffectsModule.forFeature([WorkContextEffects]),
 
     StoreModule.forFeature(boardsFeature),
-    EffectsModule.forFeature([BoardsEffects]),
+
+    StoreModule.forFeature(timeTrackingFeature),
+
+    StoreModule.forFeature(plannerFeature),
+    EffectsModule.forFeature([PlannerEffects]),
 
     // EFFECTS ONLY
     EffectsModule.forFeature([...(IS_ANDROID_WEB_VIEW ? [AndroidEffects] : [])]),
@@ -176,13 +177,9 @@ import { BoardsEffects } from '../features/boards/store/boards.effects';
     EffectsModule.forFeature([FinishDayBeforeCloseEffects]),
     EffectsModule.forFeature([GitlabIssueEffects]),
     EffectsModule.forFeature([JiraIssueEffects]),
-    EffectsModule.forFeature([LocalBackupEffects]),
-    EffectsModule.forFeature([LocalFileSyncElectronEffects]),
     EffectsModule.forFeature([OpenProjectEffects]),
     EffectsModule.forFeature([ReminderCountdownEffects]),
     EffectsModule.forFeature([SyncEffects]),
-
-    LocalBackupModule,
   ],
 })
 export class FeatureStoresModule {}

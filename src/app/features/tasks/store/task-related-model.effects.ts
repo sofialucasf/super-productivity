@@ -1,49 +1,40 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { restoreTask, updateTask, updateTaskTags } from './task.actions';
 import {
-  addTimeSpent,
-  moveToArchive_,
-  restoreTask,
-  updateTask,
-  updateTaskTags,
-} from './task.actions';
-import { concatMap, filter, first, map, switchMap, tap } from 'rxjs/operators';
-import { PersistenceService } from '../../../core/persistence/persistence.service';
-import { Task, TaskArchive, TaskCopy, TaskWithSubTasks } from '../task.model';
-import { ReminderService } from '../../reminder/reminder.service';
+  concatMap,
+  filter,
+  first,
+  map,
+  switchMap,
+  tap,
+  withLatestFrom,
+} from 'rxjs/operators';
+import { Task } from '../task.model';
 import { moveTaskInTodayList } from '../../work-context/store/work-context-meta.actions';
-import { taskAdapter } from './task.adapter';
-import { flattenTasks } from './task.selectors';
 import { GlobalConfigService } from '../../config/global-config.service';
-import { TODAY_TAG } from '../../tag/tag.const';
-import { unique } from '../../../util/unique';
 import { TaskService } from '../task.service';
 import { EMPTY, Observable, of } from 'rxjs';
-import { createEmptyEntity } from '../../../util/create-empty-entity';
 import { moveProjectTaskToRegularList } from '../../project/store/project.actions';
 import { SnackService } from '../../../core/snack/snack.service';
 import { T } from '../../../t.const';
+import { TimeTrackingActions } from '../../time-tracking/store/time-tracking.actions';
+import { TaskArchiveService } from '../../time-tracking/task-archive.service';
+import { Store } from '@ngrx/store';
+import { selectTodayTagTaskIds } from '../../tag/store/tag.reducer';
+import { planTasksForToday } from '../../tag/store/tag.actions';
 
 @Injectable()
 export class TaskRelatedModelEffects {
   private _actions$ = inject(Actions);
-  private _reminderService = inject(ReminderService);
   private _taskService = inject(TaskService);
   private _globalConfigService = inject(GlobalConfigService);
-  private _persistenceService = inject(PersistenceService);
+  private _store = inject(Store);
   private _snackService = inject(SnackService);
+  private _taskArchiveService = inject(TaskArchiveService);
 
   // EFFECTS ===> EXTERNAL
   // ---------------------
-
-  moveToArchive$: any = createEffect(
-    () =>
-      this._actions$.pipe(
-        ofType(moveToArchive_),
-        tap(({ tasks }) => this._moveToArchive(tasks)),
-      ),
-    { dispatch: false },
-  );
 
   restoreTask$: any = createEffect(
     () =>
@@ -62,26 +53,16 @@ export class TaskRelatedModelEffects {
   autoAddTodayTagOnTracking: any = createEffect(() =>
     this.ifAutoAddTodayEnabled$(
       this._actions$.pipe(
-        ofType(addTimeSpent),
-        switchMap(({ task }) =>
-          task.parentId
-            ? this._taskService.getByIdOnce$(task.parentId).pipe(
-                map((parent) => ({
-                  parent,
-                  task,
-                })),
-              )
-            : of({ parent: undefined, task }),
-        ),
+        ofType(TimeTrackingActions.addTimeSpent),
+        withLatestFrom(this._store.select(selectTodayTagTaskIds)),
         filter(
-          ({ task, parent }: { task: TaskCopy; parent?: TaskCopy }) =>
-            !task.tagIds.includes(TODAY_TAG.id) &&
-            (!parent || !parent.tagIds.includes(TODAY_TAG.id)),
+          ([{ task }, todayTaskIds]) =>
+            !todayTaskIds.includes(task.id) &&
+            (!task.parentId || !todayTaskIds.includes(task.parentId)),
         ),
-        map(({ task }) =>
-          updateTaskTags({
-            task,
-            newTagIds: unique([...task.tagIds, TODAY_TAG.id]),
+        map(([{ task }]) =>
+          planTasksForToday({
+            taskIds: [task.id],
           }),
         ),
       ),
@@ -94,11 +75,10 @@ export class TaskRelatedModelEffects {
         ofType(updateTask),
         filter((a) => a.task.changes.isDone === true),
         switchMap(({ task }) => this._taskService.getByIdOnce$(task.id as string)),
-        filter((task: Task) => !task.parentId && !task.tagIds.includes(TODAY_TAG.id)),
+        filter((task: Task) => !task.parentId),
         map((task) =>
-          updateTaskTags({
-            task,
-            newTagIds: unique([...task.tagIds, TODAY_TAG.id]),
+          planTasksForToday({
+            taskIds: [task.id],
           }),
         ),
       ),
@@ -221,64 +201,6 @@ export class TaskRelatedModelEffects {
 
   private async _removeFromArchive(task: Task): Promise<unknown> {
     const taskIds = [task.id, ...task.subTaskIds];
-    const currentArchive: TaskArchive =
-      (await this._persistenceService.taskArchive.loadState()) || createEmptyEntity();
-    const allIds = (currentArchive.ids as string[]) || [];
-    const idsToRemove: string[] = [];
-
-    taskIds.forEach((taskId) => {
-      if (allIds.indexOf(taskId) > -1) {
-        delete currentArchive.entities[taskId];
-        idsToRemove.push(taskId);
-      }
-    });
-
-    return this._persistenceService.taskArchive.saveState(
-      {
-        ...currentArchive,
-        ids: allIds.filter((id) => !idsToRemove.includes(id)),
-      },
-      { isSyncModelChange: true },
-    );
-  }
-
-  private async _moveToArchive(tasks: TaskWithSubTasks[]): Promise<unknown> {
-    const now = Date.now();
-    const flatTasks = flattenTasks(tasks);
-    if (!flatTasks.length) {
-      return;
-    }
-
-    const currentArchive: TaskArchive =
-      (await this._persistenceService.taskArchive.loadState()) || createEmptyEntity();
-
-    const newArchive = taskAdapter.addMany(
-      flatTasks.map(({ subTasks, ...task }) => ({
-        ...task,
-        reminderId: undefined,
-        isDone: true,
-        plannedAt: undefined,
-        doneOn:
-          task.isDone && task.doneOn
-            ? task.doneOn
-            : task.parentId
-              ? flatTasks.find((t) => t.id === task.parentId)?.doneOn || now
-              : now,
-      })),
-      currentArchive,
-    );
-
-    flatTasks
-      .filter((t) => !!t.reminderId)
-      .forEach((t) => {
-        if (!t.reminderId) {
-          throw new Error('No t.reminderId');
-        }
-        this._reminderService.removeReminder(t.reminderId);
-      });
-
-    return this._persistenceService.taskArchive.saveState(newArchive, {
-      isSyncModelChange: true,
-    });
+    return this._taskArchiveService.deleteTasks(taskIds);
   }
 }

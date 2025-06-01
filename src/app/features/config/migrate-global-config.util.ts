@@ -8,7 +8,7 @@ import {
 import { DEFAULT_GLOBAL_CONFIG } from './default-global-config.const';
 import { MODEL_VERSION_KEY } from '../../app.constants';
 import { isMigrateModel } from '../../util/is-migrate-model';
-import { SyncProvider } from '../../imex/sync/sync-provider.model';
+import { LegacySyncProvider } from '../../imex/sync/legacy-sync-provider.model';
 import { MODEL_VERSION } from '../../core/model-version';
 
 export const migrateGlobalConfigState = (
@@ -201,14 +201,14 @@ const _migrateMotivationalImg = (config: GlobalConfigState): GlobalConfigState =
 };
 
 const _migrateSyncCfg = (config: GlobalConfigState): GlobalConfigState => {
-  const getDir = (file: string): string | null => {
-    const normalizedFilePath = file.replace(/\\/g, '/');
-    const m = normalizedFilePath.match(/(.*)\//);
-    return (m && m[1]) || null;
-  };
+  // const getDir = (file: string): string | null => {
+  //   const normalizedFilePath = file.replace(/\\/g, '/');
+  //   const m = normalizedFilePath.match(/(.*)\//);
+  //   return (m && m[1]) || null;
+  // };
 
   if (config.sync) {
-    let syncProvider: SyncProvider | null = config.sync.syncProvider;
+    let syncProvider: LegacySyncProvider | null = config.sync.syncProvider;
     if ((syncProvider as any) === 'GoogleDrive') {
       syncProvider = null;
     }
@@ -216,7 +216,7 @@ const _migrateSyncCfg = (config: GlobalConfigState): GlobalConfigState => {
       delete (config.sync as any).googleDriveSync;
     }
 
-    if (!config.sync.localFileSync || !config.sync.dropboxSync || !config.sync.webDav) {
+    if (!config.sync.localFileSync || !config.sync.webDav) {
       console.warn(
         'sync config was missing some keys, reverting to default',
         config.sync,
@@ -229,26 +229,26 @@ const _migrateSyncCfg = (config: GlobalConfigState): GlobalConfigState => {
       };
     }
 
-    if (
-      !config.sync.localFileSync.syncFolderPath &&
-      config.sync.localFileSync.syncFilePath?.length
-    ) {
-      config.sync.localFileSync.syncFolderPath = getDir(
-        config.sync.localFileSync.syncFilePath,
-      );
-      console.log(
-        'migrating new folder path localFileSync',
-        JSON.stringify(config.sync.localFileSync),
-      );
-      // TODO add delete with next version
-      // delete config.sync.localFileSync.syncFilePath;
-    }
-    if (!config.sync.webDav.syncFolderPath && config.sync.webDav.syncFilePath?.length) {
-      config.sync.webDav.syncFolderPath = getDir(config.sync.webDav.syncFilePath);
-      console.log('migrating new folder path webDav', JSON.stringify(config.sync.webDav));
-      // TODO add delete with next version
-      // delete config.sync.webDav.syncFilePath;
-    }
+    // if (
+    //   !config.sync.localFileSync.syncFolderPath &&
+    //   config.sync.localFileSync.syncFilePath?.length
+    // ) {
+    //   config.sync.localFileSync.syncFolderPath = getDir(
+    //     config.sync.localFileSync.syncFilePath,
+    //   );
+    //   console.log(
+    //     'migrating new folder path localFileSync',
+    //     JSON.stringify(config.sync.localFileSync),
+    //   );
+    //   // TODO add delete with next version
+    //   // delete config.sync.localFileSync.syncFilePath;
+    // }
+    // if (!config.sync.webDav.syncFolderPath && config.sync.webDav.syncFilePath?.length) {
+    //   config.sync.webDav.syncFolderPath = getDir(config.sync.webDav.syncFilePath);
+    //   console.log('migrating new folder path webDav', JSON.stringify(config.sync.webDav));
+    //   // TODO add delete with next version
+    //   // delete config.sync.webDav.syncFilePath;
+    // }
 
     return { ...config, sync: { ...config.sync, syncProvider } };
   }
